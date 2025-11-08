@@ -1,390 +1,400 @@
-import React, { useState, useEffect } from 'react';
-import { BarChart, Bar, PieChart, Pie, Cell, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts';
-import { Package, Search, TrendingUp, AlertCircle } from 'lucide-react';
-
-const STOCK_SHEET_URL = 'https://docs.google.com/spreadsheets/d/1t9FrsG2j-y8irIc4wrrzaaEdIFrpTjUD_Su_6eZ3Iks/gviz/tq?tqx=out:csv&sheet=STOCK';
-const SPECS_SHEET_URL = 'https://docs.google.com/spreadsheets/d/1yE-KavvXFdg3MZqiB8RjpKLiERmqpZvp8-6_Oj9QUXw/gviz/tq?tqx=out:csv&sheet=specs';
-
-const COLORS = ['#3b82f6', '#8b5cf6', '#ec4899', '#f59e0b', '#10b981', '#6366f1'];
-
-export default function WarehouseStockApp() {
-  const [view, setView] = useState('dashboard');
-  const [stockData, setStockData] = useState([]);
-  const [specsData, setSpecsData] = useState({});
-  const [loading, setLoading] = useState(true);
-  const [searchTerm, setSearchTerm] = useState('');
-  const [searchResults, setSearchResults] = useState([]);
-
-  useEffect(() => {
-    loadData();
-  }, []);
-
-  const loadData = async () => {
-    setLoading(true);
-    try {
-      // Load stock data
-      const stockResponse = await fetch(STOCK_SHEET_URL);
-      const stockText = await stockResponse.text();
-      const stockRows = stockText.split('\n').slice(1).filter(row => row.trim());
-      
-      const stockItems = stockRows.map(row => {
-        const [sku, location] = row.split(',').map(cell => cell.replace(/"/g, '').trim());
-        return { sku, location };
-      });
-
-      // Load specs data
-      const specsResponse = await fetch(SPECS_SHEET_URL);
-      const specsText = await specsResponse.text();
-      const specsRows = specsText.split('\n').filter(row => row.trim());
-      
-      const specs = {};
-      specsRows.forEach(row => {
-        const parts = row.split(',');
-        if (parts.length >= 2) {
-          const sku = parts[0].replace(/"/g, '').trim();
-          const description = parts.slice(1).join(',').replace(/"/g, '').trim();
-          specs[sku] = description;
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Warehouse Stock Management</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        .loading-spinner {
+            border: 4px solid #f3f4f6;
+            border-top: 4px solid #3b82f6;
+            border-radius: 50%;
+            width: 64px;
+            height: 64px;
+            animation: spin 1s linear infinite;
         }
-      });
-
-      setStockData(stockItems);
-      setSpecsData(specs);
-    } catch (error) {
-      console.error('Error loading data:', error);
-    }
-    setLoading(false);
-  };
-
-  const aggregateStock = () => {
-    const counts = {};
-    stockData.forEach(item => {
-      counts[item.sku] = (counts[item.sku] || 0) + 1;
-    });
-    return counts;
-  };
-
-  const handleAllStock = () => {
-    const stockCounts = aggregateStock();
-    const results = Object.entries(stockCounts)
-      .map(([sku, quantity]) => ({
-        sku,
-        specs: specsData[sku] || 'No description',
-        quantity
-      }))
-      .sort((a, b) => b.quantity - a.quantity);
-    
-    setSearchResults(results);
-    setView('results');
-  };
-
-  const handleSearchAvailableSKU = () => {
-    if (!searchTerm.trim()) return;
-    
-    const stockCounts = aggregateStock();
-    const quantity = stockCounts[searchTerm.trim()] || 0;
-    
-    const results = quantity > 0 ? [{
-      sku: searchTerm.trim(),
-      specs: specsData[searchTerm.trim()] || 'No description',
-      quantity
-    }] : [];
-    
-    setSearchResults(results);
-    setView('results');
-  };
-
-  const handleSearchAnySKU = () => {
-    if (!searchTerm.trim()) return;
-    
-    const results = [{
-      sku: searchTerm.trim(),
-      specs: specsData[searchTerm.trim()] || 'SKU not found in specs'
-    }];
-    
-    setSearchResults(results);
-    setView('results');
-  };
-
-  const handleSearchAvailableSpecs = () => {
-    if (!searchTerm.trim()) return;
-    
-    const searchLower = searchTerm.toLowerCase();
-    const stockCounts = aggregateStock();
-    
-    const results = Object.entries(specsData)
-      .filter(([sku, specs]) => specs.toLowerCase().includes(searchLower))
-      .map(([sku, specs]) => ({
-        sku,
-        specs,
-        quantity: stockCounts[sku] || 0
-      }))
-      .filter(item => item.quantity > 0)
-      .sort((a, b) => b.quantity - a.quantity);
-    
-    setSearchResults(results);
-    setView('results');
-  };
-
-  const handleSearchAnySpecs = () => {
-    if (!searchTerm.trim()) return;
-    
-    const searchLower = searchTerm.toLowerCase();
-    
-    const results = Object.entries(specsData)
-      .filter(([sku, specs]) => specs.toLowerCase().includes(searchLower))
-      .map(([sku, specs]) => ({
-        sku,
-        specs
-      }));
-    
-    setSearchResults(results);
-    setView('results');
-  };
-
-  const getDashboardData = () => {
-    const stockCounts = aggregateStock();
-    const totalItems = stockData.length;
-    const uniqueSKUs = Object.keys(stockCounts).length;
-    const topProducts = Object.entries(stockCounts)
-      .map(([sku, quantity]) => ({
-        name: specsData[sku]?.substring(0, 30) + '...' || sku,
-        quantity
-      }))
-      .sort((a, b) => b.quantity - a.quantity)
-      .slice(0, 5);
-
-    return { totalItems, uniqueSKUs, topProducts, stockCounts };
-  };
-
-  if (loading) {
-    return (
-      <div className="flex items-center justify-center h-screen bg-gradient-to-br from-blue-50 to-indigo-100">
-        <div className="text-center">
-          <div className="animate-spin rounded-full h-16 w-16 border-b-4 border-blue-600 mx-auto mb-4"></div>
-          <p className="text-gray-600 text-lg">Loading warehouse data...</p>
-        </div>
-      </div>
-    );
-  }
-
-  return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 p-6">
-      <div className="max-w-7xl mx-auto">
-        {/* Header */}
-        <div className="bg-white rounded-lg shadow-lg p-6 mb-6">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-3">
-              <Package className="w-10 h-10 text-blue-600" />
-              <div>
-                <h1 className="text-3xl font-bold text-gray-800">Warehouse Stock Management</h1>
-                <p className="text-gray-500">Real-time inventory tracking and analysis</p>
-              </div>
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+    </style>
+</head>
+<body class="bg-gradient-to-br from-blue-50 to-indigo-100 min-h-screen">
+    <div id="app" class="p-6">
+        <div id="loading" class="flex items-center justify-center h-screen">
+            <div class="text-center">
+                <div class="loading-spinner mx-auto mb-4"></div>
+                <p class="text-gray-600 text-lg">Loading warehouse data...</p>
             </div>
-            <button
-              onClick={() => { setView('dashboard'); loadData(); }}
-              className="px-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition font-semibold"
-            >
-              Dashboard
-            </button>
-          </div>
         </div>
 
-        {/* Action Buttons */}
-        <div className="bg-white rounded-lg shadow-lg p-6 mb-6">
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-            <button
-              onClick={handleAllStock}
-              className="px-6 py-4 bg-gradient-to-r from-blue-500 to-blue-600 text-white rounded-lg hover:from-blue-600 hover:to-blue-700 transition font-semibold shadow-md"
-            >
-              All Stock
-            </button>
-
-            <div className="col-span-1 md:col-span-2 lg:col-span-2 grid grid-cols-1 sm:grid-cols-2 gap-4">
-              <div className="flex gap-2">
-                <input
-                  type="text"
-                  placeholder="Enter SKU or search term..."
-                  value={searchTerm}
-                  onChange={(e) => setSearchTerm(e.target.value)}
-                  className="flex-1 px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-                />
-              </div>
-              
-              <div className="grid grid-cols-2 gap-2">
-                <button
-                  onClick={handleSearchAvailableSKU}
-                  className="px-4 py-2 bg-gradient-to-r from-purple-500 to-purple-600 text-white rounded-lg hover:from-purple-600 hover:to-purple-700 transition text-sm font-semibold"
-                >
-                  Search Available SKU
-                </button>
-                <button
-                  onClick={handleSearchAnySKU}
-                  className="px-4 py-2 bg-gradient-to-r from-pink-500 to-pink-600 text-white rounded-lg hover:from-pink-600 hover:to-pink-700 transition text-sm font-semibold"
-                >
-                  Search Any SKU
-                </button>
-              </div>
+        <div id="mainApp" class="max-w-7xl mx-auto hidden">
+            <div class="bg-white rounded-lg shadow-lg p-6 mb-6">
+                <div class="flex items-center justify-between flex-wrap gap-4">
+                    <div class="flex items-center gap-3">
+                        <svg class="w-10 h-10 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4"></path>
+                        </svg>
+                        <div>
+                            <h1 class="text-3xl font-bold text-gray-800">Warehouse Stock Management</h1>
+                            <p class="text-gray-500">Real-time inventory tracking and analysis</p>
+                        </div>
+                    </div>
+                    <button onclick="showDashboard()" class="px-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition font-semibold">
+                        Dashboard
+                    </button>
+                </div>
             </div>
 
-            <div className="col-span-1 md:col-span-2 lg:col-span-3 grid grid-cols-1 sm:grid-cols-2 gap-4">
-              <button
-                onClick={handleSearchAvailableSpecs}
-                className="px-6 py-4 bg-gradient-to-r from-orange-500 to-orange-600 text-white rounded-lg hover:from-orange-600 hover:to-orange-700 transition font-semibold shadow-md"
-              >
-                Search Available Specs
-              </button>
-              <button
-                onClick={handleSearchAnySpecs}
-                className="px-6 py-4 bg-gradient-to-r from-green-500 to-green-600 text-white rounded-lg hover:from-green-600 hover:to-green-700 transition font-semibold shadow-md"
-              >
-                Search Any Specs
-              </button>
+            <div class="bg-white rounded-lg shadow-lg p-6 mb-6">
+                <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                    <button onclick="handleAllStock()" class="px-6 py-4 bg-gradient-to-r from-blue-500 to-blue-600 text-white rounded-lg hover:from-blue-600 hover:to-blue-700 transition font-semibold shadow-md">
+                        All Stock
+                    </button>
+
+                    <div class="col-span-1 md:col-span-2 lg:col-span-2 grid grid-cols-1 gap-4">
+                        <input type="text" id="searchInput" placeholder="Enter SKU or search term..." class="px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500">
+                        
+                        <div class="grid grid-cols-2 gap-2">
+                            <button onclick="handleSearchAvailableSKU()" class="px-4 py-2 bg-gradient-to-r from-purple-500 to-purple-600 text-white rounded-lg hover:from-purple-600 hover:to-purple-700 transition text-sm font-semibold">
+                                Search Available SKU
+                            </button>
+                            <button onclick="handleSearchAnySKU()" class="px-4 py-2 bg-gradient-to-r from-pink-500 to-pink-600 text-white rounded-lg hover:from-pink-600 hover:to-pink-700 transition text-sm font-semibold">
+                                Search Any SKU
+                            </button>
+                        </div>
+                    </div>
+
+                    <div class="col-span-1 md:col-span-2 lg:col-span-3 grid grid-cols-1 sm:grid-cols-2 gap-4">
+                        <button onclick="handleSearchAvailableSpecs()" class="px-6 py-4 bg-gradient-to-r from-orange-500 to-orange-600 text-white rounded-lg hover:from-orange-600 hover:to-orange-700 transition font-semibold shadow-md">
+                            Search Available Specs
+                        </button>
+                        <button onclick="handleSearchAnySpecs()" class="px-6 py-4 bg-gradient-to-r from-green-500 to-green-600 text-white rounded-lg hover:from-green-600 hover:to-green-700 transition font-semibold shadow-md">
+                            Search Any Specs
+                        </button>
+                    </div>
+                </div>
             </div>
-          </div>
+
+            <div id="dashboardView">
+                <div class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-6">
+                    <div class="bg-white rounded-lg shadow-lg p-6">
+                        <div class="flex items-center justify-between">
+                            <div>
+                                <p class="text-gray-500 text-sm font-semibold uppercase">Total Items</p>
+                                <p id="totalItems" class="text-3xl font-bold text-blue-600 mt-2">0</p>
+                            </div>
+                            <svg class="w-12 h-12 text-blue-200" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4"></path>
+                            </svg>
+                        </div>
+                    </div>
+
+                    <div class="bg-white rounded-lg shadow-lg p-6">
+                        <div class="flex items-center justify-between">
+                            <div>
+                                <p class="text-gray-500 text-sm font-semibold uppercase">Unique SKUs</p>
+                                <p id="uniqueSKUs" class="text-3xl font-bold text-purple-600 mt-2">0</p>
+                            </div>
+                            <svg class="w-12 h-12 text-purple-200" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6"></path>
+                            </svg>
+                        </div>
+                    </div>
+
+                    <div class="bg-white rounded-lg shadow-lg p-6">
+                        <div class="flex items-center justify-between">
+                            <div>
+                                <p class="text-gray-500 text-sm font-semibold uppercase">Avg per SKU</p>
+                                <p id="avgPerSKU" class="text-3xl font-bold text-green-600 mt-2">0</p>
+                            </div>
+                            <svg class="w-12 h-12 text-green-200" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                            </svg>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                    <div class="bg-white rounded-lg shadow-lg p-6">
+                        <h2 class="text-xl font-bold text-gray-800 mb-4">Top 5 Products by Quantity</h2>
+                        <canvas id="barChart" height="300"></canvas>
+                    </div>
+
+                    <div class="bg-white rounded-lg shadow-lg p-6">
+                        <h2 class="text-xl font-bold text-gray-800 mb-4">Stock Distribution (Top 6 SKUs)</h2>
+                        <canvas id="pieChart" height="300"></canvas>
+                    </div>
+                </div>
+            </div>
+
+            <div id="resultsView" class="bg-white rounded-lg shadow-lg p-6 hidden">
+                <h2 class="text-2xl font-bold text-gray-800 mb-4">Search Results</h2>
+                <div id="resultsContent"></div>
+            </div>
         </div>
-
-        {/* Main Content */}
-        {view === 'dashboard' ? (
-          <DashboardView data={getDashboardData()} />
-        ) : (
-          <ResultsView results={searchResults} />
-        )}
-      </div>
     </div>
-  );
-}
 
-function DashboardView({ data }) {
-  const { totalItems, uniqueSKUs, topProducts, stockCounts } = data;
+    <script>
+        const STOCK_SHEET_URL = 'https://docs.google.com/spreadsheets/d/1t9FrsG2j-y8irIc4wrrzaaEdIFrpTjUD_Su_6eZ3Iks/gviz/tq?tqx=out:csv&sheet=STOCK';
+        const SPECS_SHEET_URL = 'https://docs.google.com/spreadsheets/d/1yE-KavvXFdg3MZqiB8RjpKLiERmqpZvp8-6_Oj9QUXw/gviz/tq?tqx=out:csv&sheet=specs';
 
-  const pieData = Object.entries(stockCounts)
-    .sort((a, b) => b[1] - a[1])
-    .slice(0, 6)
-    .map(([sku, quantity]) => ({
-      name: sku,
-      value: quantity
-    }));
+        let stockData = [];
+        let specsData = {};
+        let barChart = null;
+        let pieChart = null;
 
-  return (
-    <div className="space-y-6">
-      {/* Stats Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-        <div className="bg-white rounded-lg shadow-lg p-6">
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-gray-500 text-sm font-semibold uppercase">Total Items</p>
-              <p className="text-3xl font-bold text-blue-600 mt-2">{totalItems}</p>
-            </div>
-            <Package className="w-12 h-12 text-blue-200" />
-          </div>
-        </div>
+        window.addEventListener('DOMContentLoaded', () => {
+            loadData();
+        });
 
-        <div className="bg-white rounded-lg shadow-lg p-6">
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-gray-500 text-sm font-semibold uppercase">Unique SKUs</p>
-              <p className="text-3xl font-bold text-purple-600 mt-2">{uniqueSKUs}</p>
-            </div>
-            <TrendingUp className="w-12 h-12 text-purple-200" />
-          </div>
-        </div>
+        async function loadData() {
+            try {
+                const stockResponse = await fetch(STOCK_SHEET_URL);
+                const stockText = await stockResponse.text();
+                const stockRows = stockText.split('\n').slice(1).filter(row => row.trim());
+                
+                stockData = stockRows.map(row => {
+                    const [sku, location] = row.split(',').map(cell => cell.replace(/"/g, '').trim());
+                    return { sku, location };
+                });
 
-        <div className="bg-white rounded-lg shadow-lg p-6">
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-gray-500 text-sm font-semibold uppercase">Avg per SKU</p>
-              <p className="text-3xl font-bold text-green-600 mt-2">
-                {uniqueSKUs > 0 ? Math.round(totalItems / uniqueSKUs) : 0}
-              </p>
-            </div>
-            <AlertCircle className="w-12 h-12 text-green-200" />
-          </div>
-        </div>
-      </div>
+                const specsResponse = await fetch(SPECS_SHEET_URL);
+                const specsText = await specsResponse.text();
+                const specsRows = specsText.split('\n').filter(row => row.trim());
+                
+                specsData = {};
+                specsRows.forEach(row => {
+                    const parts = row.split(',');
+                    if (parts.length >= 2) {
+                        const sku = parts[0].replace(/"/g, '').trim();
+                        const description = parts.slice(1).join(',').replace(/"/g, '').trim();
+                        specsData[sku] = description;
+                    }
+                });
 
-      {/* Charts */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        <div className="bg-white rounded-lg shadow-lg p-6">
-          <h2 className="text-xl font-bold text-gray-800 mb-4">Top 5 Products by Quantity</h2>
-          <ResponsiveContainer width="100%" height={300}>
-            <BarChart data={topProducts}>
-              <CartesianGrid strokeDasharray="3 3" />
-              <XAxis dataKey="name" angle={-45} textAnchor="end" height={100} fontSize={12} />
-              <YAxis />
-              <Tooltip />
-              <Legend />
-              <Bar dataKey="quantity" fill="#3b82f6" />
-            </BarChart>
-          </ResponsiveContainer>
-        </div>
+                document.getElementById('loading').classList.add('hidden');
+                document.getElementById('mainApp').classList.remove('hidden');
+                
+                updateDashboard();
+            } catch (error) {
+                console.error('Error loading data:', error);
+                document.getElementById('loading').innerHTML = '<div class="text-center"><p class="text-red-600 text-lg">Error loading data. Please check the Google Sheets URLs.</p></div>';
+            }
+        }
 
-        <div className="bg-white rounded-lg shadow-lg p-6">
-          <h2 className="text-xl font-bold text-gray-800 mb-4">Stock Distribution (Top 6 SKUs)</h2>
-          <ResponsiveContainer width="100%" height={300}>
-            <PieChart>
-              <Pie
-                data={pieData}
-                cx="50%"
-                cy="50%"
-                labelLine={false}
-                label={({ name, percent }) => `${name} (${(percent * 100).toFixed(0)}%)`}
-                outerRadius={80}
-                fill="#8884d8"
-                dataKey="value"
-              >
-                {pieData.map((entry, index) => (
-                  <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
-                ))}
-              </Pie>
-              <Tooltip />
-            </PieChart>
-          </ResponsiveContainer>
-        </div>
-      </div>
-    </div>
-  );
-}
+        function aggregateStock() {
+            const counts = {};
+            stockData.forEach(item => {
+                counts[item.sku] = (counts[item.sku] || 0) + 1;
+            });
+            return counts;
+        }
 
-function ResultsView({ results }) {
-  return (
-    <div className="bg-white rounded-lg shadow-lg p-6">
-      <h2 className="text-2xl font-bold text-gray-800 mb-4">Search Results</h2>
-      
-      {results.length === 0 ? (
-        <div className="text-center py-12">
-          <AlertCircle className="w-16 h-16 text-gray-300 mx-auto mb-4" />
-          <p className="text-gray-500 text-lg">No results found</p>
-        </div>
-      ) : (
-        <div className="overflow-x-auto">
-          <table className="w-full">
-            <thead className="bg-gradient-to-r from-blue-500 to-blue-600 text-white">
-              <tr>
-                <th className="px-6 py-3 text-left text-sm font-semibold uppercase">SKU</th>
-                <th className="px-6 py-3 text-left text-sm font-semibold uppercase">Specs Description</th>
-                {results[0]?.quantity !== undefined && (
-                  <th className="px-6 py-3 text-left text-sm font-semibold uppercase">Quantity</th>
-                )}
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-gray-200">
-              {results.map((item, index) => (
-                <tr key={index} className="hover:bg-blue-50 transition">
-                  <td className="px-6 py-4 text-sm font-semibold text-gray-800">{item.sku}</td>
-                  <td className="px-6 py-4 text-sm text-gray-600">{item.specs}</td>
-                  {item.quantity !== undefined && (
-                    <td className="px-6 py-4 text-sm">
-                      <span className="px-3 py-1 bg-blue-100 text-blue-800 rounded-full font-semibold">
-                        {item.quantity}
-                      </span>
-                    </td>
-                  )}
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-      )}
-    </div>
-  );
-}
+        function updateDashboard() {
+            const stockCounts = aggregateStock();
+            const totalItems = stockData.length;
+            const uniqueSKUs = Object.keys(stockCounts).length;
+            const avgPerSKU = uniqueSKUs > 0 ? Math.round(totalItems / uniqueSKUs) : 0;
+
+            document.getElementById('totalItems').textContent = totalItems;
+            document.getElementById('uniqueSKUs').textContent = uniqueSKUs;
+            document.getElementById('avgPerSKU').textContent = avgPerSKU;
+
+            updateCharts(stockCounts);
+        }
+
+        function updateCharts(stockCounts) {
+            const topProducts = Object.entries(stockCounts)
+                .map(([sku, quantity]) => ({
+                    sku: sku,
+                    name: (specsData[sku] || sku).substring(0, 30) + '...',
+                    quantity
+                }))
+                .sort((a, b) => b.quantity - a.quantity)
+                .slice(0, 5);
+
+            const barCtx = document.getElementById('barChart').getContext('2d');
+            if (barChart) barChart.destroy();
+            barChart = new Chart(barCtx, {
+                type: 'bar',
+                data: {
+                    labels: topProducts.map(p => p.name),
+                    datasets: [{
+                        label: 'Quantity',
+                        data: topProducts.map(p => p.quantity),
+                        backgroundColor: '#3b82f6',
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    scales: {
+                        y: {
+                            beginAtZero: true
+                        }
+                    }
+                }
+            });
+
+            const topSix = Object.entries(stockCounts)
+                .sort((a, b) => b[1] - a[1])
+                .slice(0, 6);
+
+            const pieCtx = document.getElementById('pieChart').getContext('2d');
+            if (pieChart) pieChart.destroy();
+            pieChart = new Chart(pieCtx, {
+                type: 'pie',
+                data: {
+                    labels: topSix.map(([sku]) => sku),
+                    datasets: [{
+                        data: topSix.map(([, qty]) => qty),
+                        backgroundColor: [
+                            '#3b82f6', '#8b5cf6', '#ec4899', 
+                            '#f59e0b', '#10b981', '#6366f1'
+                        ],
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: {
+                            position: 'bottom'
+                        }
+                    }
+                }
+            });
+        }
+
+        function showDashboard() {
+            document.getElementById('dashboardView').classList.remove('hidden');
+            document.getElementById('resultsView').classList.add('hidden');
+            loadData();
+        }
+
+        function showResults(results, hasQuantity) {
+            document.getElementById('dashboardView').classList.add('hidden');
+            document.getElementById('resultsView').classList.remove('hidden');
+
+            const resultsContent = document.getElementById('resultsContent');
+
+            if (results.length === 0) {
+                resultsContent.innerHTML = '<div class="text-center py-12"><svg class="w-16 h-16 text-gray-300 mx-auto mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg><p class="text-gray-500 text-lg">No results found</p></div>';
+                return;
+            }
+
+            let tableHTML = '<div class="overflow-x-auto"><table class="w-full"><thead class="bg-gradient-to-r from-blue-500 to-blue-600 text-white"><tr><th class="px-6 py-3 text-left text-sm font-semibold uppercase">SKU</th><th class="px-6 py-3 text-left text-sm font-semibold uppercase">Specs Description</th>';
+            
+            if (hasQuantity) {
+                tableHTML += '<th class="px-6 py-3 text-left text-sm font-semibold uppercase">Quantity</th>';
+            }
+            
+            tableHTML += '</tr></thead><tbody class="divide-y divide-gray-200">';
+
+            results.forEach(item => {
+                tableHTML += '<tr class="hover:bg-blue-50 transition"><td class="px-6 py-4 text-sm font-semibold text-gray-800">' + item.sku + '</td><td class="px-6 py-4 text-sm text-gray-600">' + item.specs + '</td>';
+                
+                if (hasQuantity) {
+                    tableHTML += '<td class="px-6 py-4 text-sm"><span class="px-3 py-1 bg-blue-100 text-blue-800 rounded-full font-semibold">' + item.quantity + '</span></td>';
+                }
+                
+                tableHTML += '</tr>';
+            });
+
+            tableHTML += '</tbody></table></div>';
+            resultsContent.innerHTML = tableHTML;
+        }
+
+        function handleAllStock() {
+            const stockCounts = aggregateStock();
+            const results = Object.entries(stockCounts)
+                .map(([sku, quantity]) => ({
+                    sku,
+                    specs: specsData[sku] || 'No description',
+                    quantity
+                }))
+                .sort((a, b) => b.quantity - a.quantity);
+            
+            showResults(results, true);
+        }
+
+        function handleSearchAvailableSKU() {
+            const searchTerm = document.getElementById('searchInput').value.trim();
+            if (!searchTerm) return;
+            
+            const stockCounts = aggregateStock();
+            const quantity = stockCounts[searchTerm] || 0;
+            
+            const results = quantity > 0 ? [{
+                sku: searchTerm,
+                specs: specsData[searchTerm] || 'No description',
+                quantity
+            }] : [];
+            
+            showResults(results, true);
+        }
+
+        function handleSearchAnySKU() {
+            const searchTerm = document.getElementById('searchInput').value.trim();
+            if (!searchTerm) return;
+            
+            const results = [{
+                sku: searchTerm,
+                specs: specsData[searchTerm] || 'SKU not found in specs'
+            }];
+            
+            showResults(results, false);
+        }
+
+        function handleSearchAvailableSpecs() {
+            const searchTerm = document.getElementById('searchInput').value.trim();
+            if (!searchTerm) return;
+            
+            const searchLower = searchTerm.toLowerCase();
+            const stockCounts = aggregateStock();
+            
+            const results = Object.entries(specsData)
+                .filter(([sku, specs]) => specs.toLowerCase().includes(searchLower))
+                .map(([sku, specs]) => ({
+                    sku,
+                    specs,
+                    quantity: stockCounts[sku] || 0
+                }))
+                .filter(item => item.quantity > 0)
+                .sort((a, b) => b.quantity - a.quantity);
+            
+            showResults(results, true);
+        }
+
+        function handleSearchAnySpecs() {
+            const searchTerm = document.getElementById('searchInput').value.trim();
+            if (!searchTerm) return;
+            
+            const searchLower = searchTerm.toLowerCase();
+            
+            const results = Object.entries(specsData)
+                .filter(([sku, specs]) => specs.toLowerCase().includes(searchLower))
+                .map(([sku, specs]) => ({
+                    sku,
+                    specs
+                }));
+            
+            showResults(results, false);
+        }
+
+        document.addEventListener('DOMContentLoaded', () => {
+            const searchInput = document.getElementById('searchInput');
+            if (searchInput) {
+                searchInput.addEventListener('keypress', (e) => {
+                    if (e.key === 'Enter') {
+                        handleSearchAvailableSpecs();
+                    }
+                });
+            }
+        });
+    </script>
+</body>
+</html>
