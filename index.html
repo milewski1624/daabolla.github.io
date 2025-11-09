@@ -21,8 +21,8 @@
         }
     </style>
 </head>
-<body class="bg-gradient-to-br from-blue-50 to-indigo-100 min-h-screen">
-    <div id="app" class="p-6">
+<body class="bg-gradient-to-br from-blue-50 to-indigo-100 h-screen overflow-hidden">
+    <div id="app" class="p-6 h-screen overflow-y-auto">
         <div id="loading" class="flex items-center justify-center h-screen">
             <div class="text-center">
                 <div class="loading-spinner mx-auto mb-4"></div>
@@ -30,7 +30,7 @@
             </div>
         </div>
 
-        <div id="mainApp" class="max-w-7xl mx-auto hidden">
+        <div id="mainApp" class="max-w-7xl mx-auto hidden h-full">
             <div class="bg-white rounded-lg shadow-lg p-6 mb-6">
                 <div class="flex items-center justify-between flex-wrap gap-4">
                     <div class="flex items-center gap-3">
@@ -78,8 +78,8 @@
                 </div>
             </div>
 
-            <div id="dashboardView">
-                <div class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-6">
+            <div id="dashboardView" class="h-full flex flex-col">
+                <div class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-4 flex-shrink-0">
                     <div class="bg-white rounded-lg shadow-lg p-6">
                         <div class="flex items-center justify-between">
                             <div>
@@ -117,20 +117,24 @@
                     </div>
                 </div>
 
-                <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                    <div class="bg-white rounded-lg shadow-lg p-6">
-                        <h2 class="text-xl font-bold text-gray-800 mb-4">Top 5 Products by Quantity (Pie)</h2>
-                        <canvas id="pieChartTop5" height="300"></canvas>
+                <div class="grid grid-cols-1 lg:grid-cols-2 gap-6 flex-1 min-h-0">
+                    <div class="bg-white rounded-lg shadow-lg p-6 h-full flex flex-col">
+                        <h2 class="text-xl font-bold text-gray-800 mb-4 flex-shrink-0">Top 5 Products by Quantity</h2>
+                        <div class="flex-1 min-h-0">
+                            <canvas id="pieChartTop5"></canvas>
+                        </div>
                     </div>
 
-                    <div class="bg-white rounded-lg shadow-lg p-6">
-                        <h2 class="text-xl font-bold text-gray-800 mb-4">Stock Distribution (Top 6 SKUs) (Pie)</h2>
-                        <canvas id="pieChartTop6" height="300"></canvas>
+                    <div class="bg-white rounded-lg shadow-lg p-6 h-full flex flex-col">
+                        <h2 class="text-xl font-bold text-gray-800 mb-4 flex-shrink-0">Stock Distribution (Top 6 SKUs)</h2>
+                        <div class="flex-1 min-h-0">
+                            <canvas id="pieChartTop6"></canvas>
+                        </div>
                     </div>
                 </div>
             </div>
 
-            <div id="resultsView" class="bg-white rounded-lg shadow-lg p-6 hidden">
+            <div id="resultsView" class="bg-white rounded-lg shadow-lg p-6 hidden h-full overflow-y-auto">
                 <h2 class="text-2xl font-bold text-gray-800 mb-4">Search Results</h2>
                 <div id="resultsContent"></div>
             </div>
@@ -290,7 +294,18 @@
                 options: {
                     responsive: true,
                     maintainAspectRatio: false,
-                    plugins: { legend: { position: 'bottom' } }
+                    plugins: { 
+                        legend: { 
+                            position: 'bottom',
+                            labels: {
+                                boxWidth: 12,
+                                padding: 10,
+                                font: {
+                                    size: 11
+                                }
+                            }
+                        }
+                    }
                 }
             });
 
@@ -322,7 +337,18 @@
                 options: {
                     responsive: true,
                     maintainAspectRatio: false,
-                    plugins: { legend: { position: 'bottom' } }
+                    plugins: { 
+                        legend: { 
+                            position: 'bottom',
+                            labels: {
+                                boxWidth: 12,
+                                padding: 10,
+                                font: {
+                                    size: 11
+                                }
+                            }
+                        }
+                    }
                 }
             });
         }
