@@ -144,7 +144,7 @@
     <script>
         // CSV source URLs (unchanged)
         const STOCK_SHEET_URL = 'https://docs.google.com/spreadsheets/d/1t9FrsG2j-y8irIc4wrrzaaEdIFrpTjUD_Su_6eZ3Iks/gviz/tq?tqx=out:csv&sheet=STOCK';
-        const SPECS_SHEET_URL = 'https://docs.google.com/spreadsheets/d/1yE-KavvXFdg3MZqiB8RjpKLiERmqpZvp8-6_Oj9QUXw/gviz/tq?tqx=out:csv&sheet=specs';
+        const SPECS_SHEET_URL = 'https://docs.google.com/spreadsheets/d/1yE-KavvXFdg3MZqiB8RjpKLiERmqpZvp8-6_Oj9QUXw/export?format=csv&gid=0';
 
         let stockData = [];
         let specsData = {};
@@ -221,9 +221,7 @@
                 // SPECS
                 const specsResponse = await fetch(SPECS_SHEET_URL);
                 const specsText = await specsResponse.text();
-                console.log('Specs response text:', specsText.substring(0, 200)); // Debug: First 200 chars
                 const specsRows = parseCSV(specsText);
-                console.log('Specs rows parsed:', specsRows.length); // Debug: Number of rows
                 specsData = {};
                 // skip header row; join remaining columns as description (preserves commas inside quotes)
                 specsRows.slice(1).forEach(cols => {
@@ -232,7 +230,6 @@
                     const description = cols.slice(1).filter(c => c !== undefined && c !== null).join(', ').trim();
                     specsData[rawSku] = description || 'No description';
                 });
-                console.log('Specs data loaded:', Object.keys(specsData).length, 'SKUs'); // Debug: Number of specs loaded
 
                 document.getElementById('loading').classList.add('hidden');
                 document.getElementById('mainApp').classList.remove('hidden');
@@ -276,7 +273,6 @@
 
             const labels5 = topFive.map(p => {
                 const desc = specsData[p.sku];
-                console.log('Top 5 SKU:', p.sku, 'Specs found:', !!desc, 'Specs:', desc); // Debug
                 return desc ? `${p.sku} — ${desc.substring(0, 20)}` : p.sku;
             });
             const data5 = topFive.map(p => p.quantity);
@@ -320,7 +316,6 @@
 
             const labels6 = topSix.map(([sku]) => {
                 const desc = specsData[sku];
-                console.log('Top 6 SKU:', sku, 'Specs found:', !!desc, 'Specs:', desc); // Debug
                 return desc ? `${sku} — ${desc.substring(0, 20)}` : sku;
             });
             const data6 = topSix.map(([, qty]) => qty);
