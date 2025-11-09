@@ -6,6 +6,7 @@
     <title>Warehouse Stock Management</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-datalabels@2"></script>
     <style>
         .loading-spinner {
             border: 4px solid #f3f4f6;
@@ -296,17 +297,23 @@
                     maintainAspectRatio: false,
                     plugins: { 
                         legend: { 
-                            position: 'bottom',
-                            labels: {
-                                boxWidth: 12,
-                                padding: 10,
-                                font: {
-                                    size: 11
-                                }
+                            display: false
+                        },
+                        datalabels: {
+                            color: '#fff',
+                            font: {
+                                weight: 'bold',
+                                size: 10
+                            },
+                            formatter: (value, context) => {
+                                const label = context.chart.data.labels[context.dataIndex];
+                                const sku = label.split(' — ')[0]; // Extract SKU from label
+                                return sku;
                             }
                         }
                     }
-                }
+                },
+                plugins: [ChartDataLabels]
             });
 
             // Top 6 for pieChartTop6
@@ -339,17 +346,23 @@
                     maintainAspectRatio: false,
                     plugins: { 
                         legend: { 
-                            position: 'bottom',
-                            labels: {
-                                boxWidth: 12,
-                                padding: 10,
-                                font: {
-                                    size: 11
-                                }
+                            display: false
+                        },
+                        datalabels: {
+                            color: '#fff',
+                            font: {
+                                weight: 'bold',
+                                size: 10
+                            },
+                            formatter: (value, context) => {
+                                const label = context.chart.data.labels[context.dataIndex];
+                                const sku = label.split(' — ')[0]; // Extract SKU from label
+                                return sku;
                             }
                         }
                     }
-                }
+                },
+                plugins: [ChartDataLabels]
             });
         }
 
