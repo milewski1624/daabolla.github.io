@@ -57,8 +57,25 @@
             const processCSVData = (csvText) => {
                 try {
                     const rows = csvText.split('\n').map(row => {
-                        // Simple CSV parsing - split by comma and handle quotes
-                        return row.split(',').map(cell => {
+                        // Better CSV parsing to handle quoted fields with commas
+                        const result = [];
+                        let current = '';
+                        let inQuotes = false;
+                        
+                        for (let i = 0; i < row.length; i++) {
+                            const char = row[i];
+                            if (char === '"') {
+                                inQuotes = !inQuotes;
+                            } else if (char === ',' && !inQuotes) {
+                                result.push(current.trim());
+                                current = '';
+                            } else {
+                                current += char;
+                            }
+                        }
+                        result.push(current.trim()); // Add last field
+                        
+                        return result.map(cell => {
                             // Remove quotes if present
                             return cell.replace(/^"|"$/g, '').trim();
                         });
@@ -201,9 +218,13 @@
                 
                 console.log('Issue column:', issueColumn);
                 console.log('Headers:', headers);
+                console.log('Total items to process:', filteredData.length);
                 
-                filteredData.forEach(item => {
+                let totalIssuesProcessed = 0;
+                
+                filteredData.forEach((item, index) => {
                     const issueText = issueColumn ? item[issueColumn] : '';
+                    console.log(`Processing item ${index}: "${issueText}"`);
                     
                     if (issueText && issueText.trim()) {
                         // Split by common separators to handle multiple issues in one cell
@@ -217,6 +238,7 @@
                             } else {
                                 summary[normalized] = { count: 1, original: 'Change of Mind' };
                             }
+                            totalIssuesProcessed++;
                         } else {
                             // Process each individual issue
                             issues.forEach(issue => {
@@ -224,10 +246,10 @@
                                 if (normalized) {
                                     if (summary[normalized]) {
                                         summary[normalized].count++;
-                                        // Keep the original case from first occurrence
                                     } else {
                                         summary[normalized] = { count: 1, original: issue };
                                     }
+                                    totalIssuesProcessed++;
                                 }
                             });
                         }
@@ -239,9 +261,11 @@
                         } else {
                             summary[normalized] = { count: 1, original: 'Change of Mind' };
                         }
+                        totalIssuesProcessed++;
                     }
                 });
 
+                console.log('Total issues processed:', totalIssuesProcessed);
                 console.log('Summary:', summary);
                 setIssueSummary(summary);
                 setShowSummary(true);
@@ -423,7 +447,7 @@
                                         <thead>
                                             <tr className="bg-indigo-50">
                                                 {Object.keys(filteredData[0]).filter(key => key !== 'id').map((header, index) => (
-                                                    <th key={index} className="px-6 py-3 text-left text-sm font-bold text-gray-700 uppercase tracking-wider">
+                                                    <th key={index} className={`px-6 py-3 text-left text-sm font-bold text-gray-700 uppercase tracking-wider ${index === 0 ? 'whitespace-nowrap' : ''}`}>
                                                         {header}
                                                     </th>
                                                 ))}
@@ -433,9 +457,9 @@
                                             {filteredData.map((item, rowIndex) => (
                                                 <tr key={item.id} className={rowIndex % 2 === 0 ? 'bg-white' : 'bg-gray-50'}>
                                                     {Object.entries(item).filter(([key]) => key !== 'id').map(([key, value], colIndex) => (
-                                                        <td key={colIndex} className="px-6 py-4 text-sm text-gray-700">
-                                                            {value || <span className="text-gray-400 italic">-</span>}
-                                                        </td>
+                                                <td key={colIndex} className={`px-6 py-4 text-sm text-gray-700 ${colIndex === 0 ? 'whitespace-nowrap' : ''}`}>
+                                                    {value || <span className="text-gray-400 italic">-</span>}
+                                                </td>
                                                     ))}
                                                 </tr>
                                             ))}
