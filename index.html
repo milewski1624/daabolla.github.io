@@ -35,8 +35,7 @@
             const [issueSummary, setIssueSummary] = useState({});
 
             const SHEET_ID = '1i2gM9ocy1-cftQCPQPRaVmuc5E8lGWMq';
-            const SHEET_NAME = 'ReturnsRecord';
-            const API_KEY = 'AIzaSyBurR_7r-8GVPqODzZLKlAVYwGKKqMkBnM';
+            const SHEET_GID = '1032288076';
 
             useEffect(() => {
                 fetchData();
@@ -45,15 +44,21 @@
             const fetchData = async () => {
                 try {
                     setLoading(true);
-                    const url = `https://sheets.googleapis.com/v4/spreadsheets/${SHEET_ID}/values/${SHEET_NAME}?key=${API_KEY}`;
+                    const url = `https://docs.google.com/spreadsheets/d/${SHEET_ID}/export?format=csv&gid=${SHEET_GID}`;
                     const response = await fetch(url);
                     
                     if (!response.ok) {
                         throw new Error('Failed to fetch data from Google Sheets');
                     }
                     
-                    const result = await response.json();
-                    const rows = result.values || [];
+                    const csvText = await response.text();
+                    const rows = csvText.split('\n').map(row => {
+                        // Simple CSV parsing - split by comma and handle quotes
+                        return row.split(',').map(cell => {
+                            // Remove quotes if present
+                            return cell.replace(/^"|"$/g, '').trim();
+                        });
+                    }).filter(row => row.length > 1); // Filter out empty rows
                     
                     const processedData = rows.slice(1).map((row, index) => ({
                         id: index,
