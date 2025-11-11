@@ -494,15 +494,31 @@
                             <h2 className="text-2xl font-bold text-gray-800 mb-4">Returns Details</h2>
                             
                             <div className="overflow-x-auto">
-                                {searchFilteredData.length > 0 ? (() => {
-                                    const headers = Object.keys(searchFilteredData[0]).filter(key => key !== 'id');
-                                    const linkColumnIndex = detectLinkColumn(headers, searchFilteredData);
+                                {(() => {
+                                    const displayData = searchFilteredData.length > 0 ? searchFilteredData : filteredData;
+                                    const isSearchMode = searchFilteredData.length > 0;
+                                    
+                                    if (displayData.length === 0) {
+                                        return (
+                                            <div className="text-center py-12">
+                                                <Package />
+                                                <p className="text-gray-500 text-lg mt-4">
+                                                    {isSearchMode 
+                                                        ? 'No search results found. Try adjusting your search criteria.' 
+                                                        : 'No returns found for selected date range'}
+                                                </p>
+                                            </div>
+                                        );
+                                    }
+                                    
+                                    const headers = Object.keys(displayData[0]).filter(key => key !== 'id');
+                                    const linkColumnIndex = detectLinkColumn(headers, displayData);
                                     const columnAfterLink = linkColumnIndex + 1;
                                     
                                     return (
                                         <table className="w-full">
                                             <thead>
-                                                <tr className="bg-purple-50">
+                                                <tr className={isSearchMode ? 'bg-purple-50' : 'bg-indigo-50'}>
                                                     {headers.map((header, index) => (
                                                         <th key={index} className={`px-6 py-3 text-left text-sm font-bold text-gray-700 uppercase tracking-wider ${index === 0 ? 'whitespace-nowrap' : ''}`}>
                                                             {header}
@@ -511,7 +527,7 @@
                                                 </tr>
                                             </thead>
                                             <tbody className="divide-y divide-gray-200">
-                                                {searchFilteredData.map((item, rowIndex) => (
+                                                {displayData.map((item, rowIndex) => (
                                                     <tr key={item.id} className={rowIndex % 2 === 0 ? 'bg-white' : 'bg-gray-50'}>
                                                         {Object.entries(item).filter(([key]) => key !== 'id').map(([key, value], colIndex) => (
                                                             <td key={colIndex} className={`px-6 py-4 text-sm text-gray-700 ${colIndex === 0 ? 'whitespace-nowrap' : ''} ${colIndex === columnAfterLink ? 'whitespace-nowrap' : ''}`}>
@@ -534,56 +550,7 @@
                                             </tbody>
                                         </table>
                                     );
-                                })() : filteredData.length > 0 ? (() => {
-                                    const headers = Object.keys(filteredData[0]).filter(key => key !== 'id');
-                                    const linkColumnIndex = detectLinkColumn(headers, filteredData);
-                                    const columnAfterLink = linkColumnIndex + 1;
-                                    
-                                    return (
-                                        <table className="w-full">
-                                            <thead>
-                                                <tr className="bg-indigo-50">
-                                                    {headers.map((header, index) => (
-                                                        <th key={index} className={`px-6 py-3 text-left text-sm font-bold text-gray-700 uppercase tracking-wider ${index === 0 ? 'whitespace-nowrap' : ''}`}>
-                                                            {header}
-                                                        </th>
-                                                    ))}
-                                                </tr>
-                                            </thead>
-                                            <tbody className="divide-y divide-gray-200">
-                                                {filteredData.map((item, rowIndex) => (
-                                                    <tr key={item.id} className={rowIndex % 2 === 0 ? 'bg-white' : 'bg-gray-50'}>
-                                                        {Object.entries(item).filter(([key]) => key !== 'id').map(([key, value], colIndex) => (
-                                                            <td key={colIndex} className={`px-6 py-4 text-sm text-gray-700 ${colIndex === 0 ? 'whitespace-nowrap' : ''} ${colIndex === columnAfterLink ? 'whitespace-nowrap' : ''}`}>
-                                                                {colIndex === linkColumnIndex && isLink(value) ? (
-                                                                    <a 
-                                                                        href={formatLink(value)} 
-                                                                        target="_blank" 
-                                                                        rel="noopener noreferrer"
-                                                                        className="text-blue-600 hover:text-blue-800 underline"
-                                                                    >
-                                                                        {value}
-                                                                    </a>
-                                                                ) : (
-                                                                    value || <span className="text-gray-400 italic">-</span>
-                                                                )}
-                                                            </td>
-                                                        ))}
-                                                    </tr>
-                                                ))}
-                                            </tbody>
-                                        </table>
-                                    );
-                                })() : (
-                                    <div className="text-center py-12">
-                                        <Package />
-                                        <p className="text-gray-500 text-lg mt-4">
-                                            {searchFilteredData.length === 0 && (searchStartDate || searchEndDate || searchText) 
-                                                ? 'No search results found. Try adjusting your search criteria.' 
-                                                : 'No returns found for selected date range'}
-                                        </p>
-                                    </div>
-                                )}
+                                })()}
                             </div>
                         </div>
                     </div>
