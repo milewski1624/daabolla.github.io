@@ -226,11 +226,14 @@
             text-align: center;
             transition: all 0.3s ease;
             background: #f7fafc;
+            cursor: pointer;
         }
         
         .upload-area:hover {
             border-color: #667eea;
             background: white;
+            transform: translateY(-2px);
+            box-shadow: 0 4px 20px rgba(102, 126, 234, 0.2);
         }
         
         .upload-icon {
@@ -286,12 +289,12 @@
         <div class="container-title">
             📁 Upload CSV File
         </div>
-        <div class="upload-area">
+        <div class="upload-area" onclick="document.getElementById('csvFile').click()">
             <div class="upload-icon">📤</div>
             <input type="file" id="csvFile" accept=".csv" style="display: none;">
-            <label for="csvFile" style="cursor: pointer; font-weight: 500; color: #4a5568;">
+            <div style="cursor: pointer; font-weight: 500; color: #4a5568;">
                 Click to upload or drag and drop your CSV file here
-            </label>
+            </div>
             <p style="margin-top: 10px; color: #a0aec0; font-size: 14px;">
                 Supports CSV files with date and issue columns
             </p>
